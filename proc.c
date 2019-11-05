@@ -112,6 +112,10 @@ found:
   memset(p->context, 0, sizeof *p->context);
   p->context->eip = (uint)forkret;
 
+  // waitx time fields
+  p->etime = 0;p->rtime = 0;p->iotime = 0; // these times are calculated differently
+  p->stime = ticks;	// start time
+
   return p;
 }
 
@@ -261,8 +265,12 @@ exit(void)
     }
   }
 
+
   // Jump into the scheduler, never to return.
   curproc->state = ZOMBIE;
+
+  curproc->etime=ticks;//etime updated
+
   sched();
   panic("zombie exit");
 }
@@ -310,6 +318,48 @@ wait(void)
     sleep(curproc, &ptable.lock);  //DOC: wait-sleep
   }
 }
+int waitx(int *wtime, int *rtime)
+{
+  struct proc *p;
+  int havekids, pid;
+  struct proc *curproc = myproc();
+
+  acquire(&ptable.lock);
+  for(;;){
+    // Scan through table looking for zombie children.
+    havekids = 0;
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+      if(p->parent != curproc)
+        continue;
+      havekids = 1;
+      if(p->state == ZOMBIE){
+        // If found Added time field update 
+        *wtime = p->etime - p->stime - p->rtime - p->iotime;
+        *rtime = p->rtime;
+        pid = p->pid;
+        kfree(p->kstack);
+        p->kstack = 0;
+        freevm(p->pgdir);
+        p->state = UNUSED;
+        p->pid = 0;
+        p->parent = 0;
+        p->name[0] = 0;
+        p->killed = 0;
+        release(&ptable.lock);
+        return pid;
+      }
+    }
+
+    // No point waiting if we don't have any children.
+    if(!havekids || curproc->killed){
+      release(&ptable.lock);
+      return -1;
+    }
+
+    // Wait for children to exit.  (See wakeup1 call in proc_exit.)
+    sleep(curproc, &ptable.lock);  //DOC: wait-sleep
+  }
+}
 
 //PAGEBREAK: 42
 // Per-CPU process scheduler.
@@ -342,7 +392,7 @@ scheduler(void)
       c->proc = p;
       switchuvm(p);
       p->state = RUNNING;
-
+     // cprintf("Process %s with pid %d is running\n",p->name,p->pid );
       swtch(&(c->scheduler), p->context);
       switchkvm();
 

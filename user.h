@@ -22,6 +22,7 @@ int dup(int);
 int getpid(void);
 char* sbrk(int);
 int sleep(int);
+int waitx(int *wtime,int *rtime);//waitx
 int uptime(void);
 
 // ulib.c

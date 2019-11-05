@@ -52,7 +52,6 @@ struct inode*   nameiparent(char*, char*);
 int             readi(struct inode*, char*, uint, uint);
 void            stati(struct inode*, struct stat*);
 int             writei(struct inode*, char*, uint, uint);
-
 // ide.c
 void            ideinit(void);
 void            ideintr(void);
@@ -118,6 +117,7 @@ void            setproc(struct proc*);
 void            sleep(void*, struct spinlock*);
 void            userinit(void);
 int             wait(void);
+int 			waitx(int *,int *);
 void            wakeup(void*);
 void            yield(void);
 

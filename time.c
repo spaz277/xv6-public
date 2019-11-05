@@ -3,6 +3,11 @@
 #include "user.h"
 #include "fs.h"
 
+void printend()
+{
+  printf(1,"___________________________________________________\n");
+
+}
 int main (int argc,char *argv[])
 {
 
@@ -18,6 +23,7 @@ int main (int argc,char *argv[])
       exec(argv[1], argv);
       printf(1,"%s failed fork\n", argv[1]);
  	  }  
- 	printf(1, "Wait Time = %d\n Run Time = %d\n Status: %d \n", a, b, status); 
- 	exit();
+ 	printf(1, "Wait Time =%d\nRun Time = %d\nStatus: %d \n", a, b, status); 
+ 	printend();
+  exit();
 }

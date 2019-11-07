@@ -66,6 +66,20 @@ sys_sbrk(void)
   return addr;
 }
 
+int sys_cps(void)
+{
+  return cps();  
+}
+
+int sys_setpr(void)
+{
+  int pid,p;
+  if(argint(0,&pid)<0||argint(1,&p)<0)
+    return -1;
+  return setpr(pid,p);
+
+}
+
 int
 sys_sleep(void)
 {
@@ -99,3 +113,4 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+

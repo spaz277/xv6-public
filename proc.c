@@ -134,7 +134,8 @@ userinit(void)
   if((p->pgdir = setupkvm()) == 0)
     panic("userinit: out of memory?");
   inituvm(p->pgdir, _binary_initcode_start, (int)_binary_initcode_size);
-  p->sz = PGSIZE;
+  p->sz = PGSIZE;p->stime=ticks;p->priority=10;
+
   memset(p->tf, 0, sizeof(*p->tf));
   p->tf->cs = (SEG_UCODE << 3) | DPL_USER;
   p->tf->ds = (SEG_UDATA << 3) | DPL_USER;
@@ -185,7 +186,7 @@ growproc(int n)
 int
 fork(void)
 {
-  int i, pid;
+  int i, pid,cop;
   struct proc *np;
   struct proc *curproc = myproc();
 
@@ -201,12 +202,14 @@ fork(void)
     np->state = UNUSED;
     return -1;
   }
+  cop=curproc->priority;
   np->sz = curproc->sz;
   np->parent = curproc;
   *np->tf = *curproc->tf;
 
   // Clear %eax so that fork returns 0 in the child.
   np->tf->eax = 0;
+  np->priority=cop;
 
   for(i = 0; i < NOFILE; i++)
     if(curproc->ofile[i])
@@ -429,8 +432,37 @@ scheduler(void)
       // It should have changed its p->state before coming back.
       c->proc = 0;
 	}
+  #else 
+  #ifdef PRBASED
+      struct proc *pn,*high_p;
+      for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+      {
+        if(p->state != RUNNABLE)
+          continue;
+        high_p=p
+
+        for(np = ptable.proc; np < &ptable.proc[NPROC]; np++)
+      {
+        if(np->state != RUNNABLE)
+          continue;
+        if(high_p->priority>np->priority)//for lower val,higher priority
+          high_p=np;
+      }
+      p=high_p;
+      c->proc=high_p;
+      switchuvm(p);
+      p->state=RUNNING;
+      swtch(&(c->scheduler),p->context);
+      //cprintf("Process %s with pid %d is running\n",p->name,p->pid );
+
+      switchkvm();
+      c->proc=0;
+    }
+
+
 	#endif
 	#endif
+  #endif
 
     release(&ptable.lock);
 
@@ -613,4 +645,45 @@ procdump(void)
     }
     cprintf("\n");
   }
+}
+int cps()
+{
+  struct proc *p;
+  sti();
+
+  acquire(&ptable.lock);
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+  {
+    if(p->state==RUNNABLE)
+    {
+      cprintf("pid=%d RUNNABLE priority=%d\n",p->pid,p->priority);
+    }
+    else if(p->state==RUNNING)
+    {
+      cprintf("pid=%d RUNNING priority=%d\n",p->pid,p->priority);
+    }
+    else if(p->state==SLEEPING)
+    {
+      cprintf("pid=%d SLEEPING priority=%d\n",p->pid,p->priority);
+    }
+  }
+  release(&ptable.lock);
+  
+  return 0;
+}
+int setpr(int pid,int priority)
+{
+  struct proc *p;int check;
+  acquire(&ptable.lock);
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)//search for given pid and set pid
+  {
+    check=p->pid;
+    if(check==pid)
+    {
+      p->priority=priority;break;
+    }
+  }
+  release(&ptable.lock);
+  return pid;
+
 }

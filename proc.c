@@ -134,7 +134,7 @@ userinit(void)
   if((p->pgdir = setupkvm()) == 0)
     panic("userinit: out of memory?");
   inituvm(p->pgdir, _binary_initcode_start, (int)_binary_initcode_size);
-  p->sz = PGSIZE;p->stime=ticks;p->priority=10;
+  p->sz = PGSIZE;p->stime=ticks;p->priority=60;
 
   memset(p->tf, 0, sizeof(*p->tf));
   p->tf->cs = (SEG_UCODE << 3) | DPL_USER;
@@ -376,9 +376,7 @@ int waitx(int *wtime, int *rtime)
 void
 scheduler(void)
 {
-  struct proc *p=0;
-  struct cpu *c = mycpu();
-  c->proc = 0;
+  
   
   for(;;){
     // Enable interrupts on this processor.
@@ -388,7 +386,10 @@ scheduler(void)
     acquire(&ptable.lock);
     
     #ifdef FCFS
-        struct proc *fP = 0;
+      struct proc *p=0;
+      struct cpu *c = mycpu();
+      c->proc = 0;
+        struct proc *fP =0;
         for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
         {
           if(p->state == RUNNABLE)
@@ -414,6 +415,9 @@ scheduler(void)
        }
     #else
     #ifdef RR
+      struct proc *p=0;
+      struct cpu *c = mycpu();
+      c->proc = 0;
       for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
       {
       	if(p->state != RUNNABLE)
@@ -433,13 +437,16 @@ scheduler(void)
       c->proc = 0;
 	}
   #else 
-  #ifdef PRBASED
-      struct proc *pn,*high_p;
+  #ifdef PBS
+      struct proc *p=0;
+      struct cpu *c = mycpu();
+      c->proc = 0;
+      struct proc *np,*high_p;
       for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
       {
         if(p->state != RUNNABLE)
           continue;
-        high_p=p
+        high_p=p;
 
         for(np = ptable.proc; np < &ptable.proc[NPROC]; np++)
       {
@@ -656,15 +663,15 @@ int cps()
   {
     if(p->state==RUNNABLE)
     {
-      cprintf("pid=%d RUNNABLE priority=%d\n",p->pid,p->priority);
+      cprintf("%s pid=%d RUNNABLE priority=%d\n",p->name,p->pid,p->priority);
     }
     else if(p->state==RUNNING)
     {
-      cprintf("pid=%d RUNNING priority=%d\n",p->pid,p->priority);
+      cprintf("%s pid=%d RUNNING priority=%d\n",p->name,p->pid,p->priority);
     }
     else if(p->state==SLEEPING)
     {
-      cprintf("pid=%d SLEEPING priority=%d\n",p->pid,p->priority);
+      cprintf("%s pid=%d SLEEPING priority=%d\n",p->name,p->pid,p->priority);
     }
   }
   release(&ptable.lock);

@@ -71,12 +71,12 @@ int sys_cps(void)
   return cps();  
 }
 
-int sys_setpr(void)
+int sys_set_priority(void)
 {
   int pid,p;
   if(argint(0,&pid)<0||argint(1,&p)<0)
     return -1;
-  return setpr(pid,p);
+  return set_priority(pid,p);
 
 }
 
@@ -113,4 +113,15 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+int sys_getpinfo(void)
+{
+  struct proc_stat * p;
+
+   if(argptr(0,(char**)&p, sizeof(int))<0)
+      return -1;
+
+  return getpinfo(p);
+}
+
 

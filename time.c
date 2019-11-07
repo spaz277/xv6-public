@@ -2,7 +2,15 @@
 #include "stat.h"
 #include "user.h"
 #include "fs.h"
-
+struct proc_stat
+{
+  int pid;
+  int runtime;
+  int num_rum;
+  int current_queue;
+  int ticks[5];
+  
+};
 void printend()
 {
   printf(1,"___________________________________________________\n");
@@ -16,6 +24,10 @@ int main (int argc,char *argv[])
 	status = 0;
 	if (pid!= 0)
   	{
+      struct proc_stat p;
+      int check=getpinfo(&p);
+      check=check;
+      printf(1,"pid=%d\n",p.pid );
   		status=waitx(&a,&b);
     }
   else

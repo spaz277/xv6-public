@@ -89,6 +89,7 @@ found:
   p->state = EMBRYO;
   p->pid = nextpid++;
   p->stime=ticks;
+  p->priority=60;
 
   release(&ptable.lock);
 
@@ -116,6 +117,12 @@ found:
   // waitx time fields
   p->etime = 0;p->rtime = 0;p->iotime = 0; // these times are calculated differently
   p->stime = ticks;	// start time
+  p->num_run=0;
+  p->current_queue=0;
+  for(int i=0;i<5;i++)
+  {
+    p->ticks[i]=0;
+  }
 
   return p;
 }
@@ -134,7 +141,7 @@ userinit(void)
   if((p->pgdir = setupkvm()) == 0)
     panic("userinit: out of memory?");
   inituvm(p->pgdir, _binary_initcode_start, (int)_binary_initcode_size);
-  p->sz = PGSIZE;p->stime=ticks;p->priority=60;
+  p->sz = PGSIZE;p->stime=ticks;//p->priority=60;
 
   memset(p->tf, 0, sizeof(*p->tf));
   p->tf->cs = (SEG_UCODE << 3) | DPL_USER;
@@ -407,6 +414,7 @@ scheduler(void)
           c->proc = p;
           switchuvm(p);
           p->state = RUNNING;
+          p->num_run++;
           swtch(&c->scheduler, p->context);
           switchkvm();
           // Process is done running for now.
@@ -428,6 +436,7 @@ scheduler(void)
       c->proc = p;
       switchuvm(p);
       p->state = RUNNING;
+      p->num_run++;
       //cprintf("Process %s with pid %d is running\n",p->name,p->pid );
       swtch(&(c->scheduler), p->context);
       switchkvm();
@@ -441,6 +450,7 @@ scheduler(void)
       struct proc *p=0;
       struct cpu *c = mycpu();
       c->proc = 0;
+
       struct proc *np,*high_p;
       for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
       {
@@ -457,8 +467,10 @@ scheduler(void)
       }
       p=high_p;
       c->proc=high_p;
+
       switchuvm(p);
       p->state=RUNNING;
+      p->num_run++;
       swtch(&(c->scheduler),p->context);
       //cprintf("Process %s with pid %d is running\n",p->name,p->pid );
 
@@ -653,6 +665,19 @@ procdump(void)
     cprintf("\n");
   }
 }
+int getpinfo(struct proc_stat* curproc)
+{
+      struct proc *p=myproc();
+      curproc->runtime=p->rtime;
+      curproc->pid=p->pid;
+      curproc->num_run=p->num_run;
+      curproc->current_queue=p->current_queue;
+      for(int i=0;i<5;i++)
+      {
+        curproc->ticks[i]=p->ticks[i];
+      }
+      return 0;
+}
 int cps()
 {
   struct proc *p;
@@ -678,7 +703,7 @@ int cps()
   
   return 0;
 }
-int setpr(int pid,int priority)
+int set_priority(int pid,int priority)
 {
   struct proc *p;int check;
   acquire(&ptable.lock);
@@ -692,5 +717,27 @@ int setpr(int pid,int priority)
   }
   release(&ptable.lock);
   return pid;
-
 }
+/*int set_priotity(int pr)
+{
+  if(pr<0||pr>100)
+  {
+    panic("Priority out of bounds");
+  }
+  struct proc *p=myproc();
+  int y_check=0,cop;
+  acquire(&ptable.lock);
+  cop=p->priority;
+  p->priority=pr;
+  if(cop>pr)
+  {
+    y_check=1;
+  }
+  release(&ptable.lock);
+  if(y_check==1)
+  {
+    yield();
+  }
+  return cop;
+
+}*/

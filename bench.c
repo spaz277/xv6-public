@@ -15,7 +15,7 @@ int main(int argc, char *argv[])
                 }
             }
         }
-        printf(1, "foo ended\n");
+        printf(1, "Exiting bench\n");
     }
     exit();
 }
